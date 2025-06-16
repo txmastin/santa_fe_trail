@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from trail import load_santa_fe_trail
+import os
 
 # --- Constants and Hyperparameters ---
 # Environment
@@ -15,7 +16,7 @@ FLIF_MEMBRANE_TIME_CONSTANT = 20.0  # ms
 FLIF_THRESHOLD_VOLTAGE = 0.7    # mV (or normalized units)
 FLIF_RESET_VOLTAGE = 0.0    # mV
 FLIF_NEURONS_BIAS = 0.0025    # Small bias
-FLIF_FRACTIONAL_ORDER_ALPHA = 0.75
+FLIF_FRACTIONAL_ORDER_ALPHA = float(os.environ.get("ALPHA", 0.75))
 FLIF_MEMORY_LENGTH = 12500
 
 LIF_MEMBRANE_TIME_CONSTANT = 20.0  # ms
@@ -287,6 +288,9 @@ environment = SantaFeEnvironment("koza_trail.txt", START_POS, START_ORIENTATION)
 
 print(f"Starting training for {NUM_EPISODES} episodes...")
 avg_food_eaten = 0
+food_trace = []
+
+
 for episode_i in range(NUM_EPISODES):
     ant_pos, ant_orient_str, _ = environment.reset_ant_and_trail()
     
@@ -358,7 +362,6 @@ for episode_i in range(NUM_EPISODES):
         ant_pos, ant_orient_str = next_ant_pos, next_ant_orient_str # Update ant's state string for orientation
         if episode_done_env or food_eaten_this_episode == TOTAL_FOOD_PELLETS_ON_MAP:
             break
-            
     rewards_for_G_t = [t["reward"] for t in episode_trajectory]
     discounted_returns_G_t = calculate_discounted_returns(rewards_for_G_t, DISCOUNT_FACTOR_GAMMA)
     if len(discounted_returns_G_t) > 1:
@@ -426,11 +429,17 @@ for episode_i in range(NUM_EPISODES):
         avg_food_eaten = 0
     else:
         avg_food_eaten += food_eaten_this_episode
+    food_trace.append(food_eaten_this_episode)
 
-print("Training finished.")
+print("Training finished. Saving data.")
 
-# --- TODO for User ---
-# 1. Implement _load_map in SantaFeEnvironment with actual Koza trail data.
+filename = f"food_eaten_{FLIF_FRACTIONAL_ORDER_ALPHA}.dat"
+np.savetxt(filename, food_trace)
+
+print("Data saved.")
+
+# --- TODO ---
+# --- 1. Implement _load_map in SantaFeEnvironment with actual Koza trail data.
 #    Adjust START_POS and START_ORIENTATION accordingly. Update TOTAL_FOOD_PELLETS_ON_MAP.
 # 2. Verify/Refine FractionalLIFNeuron.update to precisely match desired discrete fractional equation.
 #    The current adaptation from the Cython code's layer-wise update to a single neuron needs careful checking.
@@ -439,7 +448,6 @@ print("Training finished.")
 #    This implies history_component is also scaled by kernel if it's part of a fractional derivative definition like D^alpha(V) = RHS.
 #    Or, if D^alpha(V-V_rest) + (V-V_rest)/tau = I, then V updates involve both.
 #    The key is to ensure the sum of GL coeffs * V_hist correctly implements the fractional derivative term.
-# 3. Refine StandardLIFNeuron.update if needed (current is Euler, can use exact integration for LIF).
+# --- 3. Refine StandardLIFNeuron.update if needed (current is Euler, can use exact integration for LIF).
 # 4. Implement more sophisticated dNk_dwk_approx if the simplified one is insufficient (e.g., using eligibility traces).
-# 5. Extensive hyperparameter tuning (learning rates, temperatures, SNN params, fLIF alpha).
-# 6. Implement evaluation metrics plotting and comparison for different alpha values.
+# 5. ONGOING hyperparameter tuning (learning rates, temperatures, SNN params, fLIF alpha).
