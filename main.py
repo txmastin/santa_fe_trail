@@ -30,6 +30,9 @@ NUM_NEURON_STEPS_PER_ANT_STEP = int(T_ANT_DECISION_WINDOW / DT_NEURON_SIM)
 
 I_ACTIVE_INPUT_CURRENT = 1.5     # Current injected when context is active
 
+
+NUM_HIDDEN_NEURONS = 4 # Number of hidden neurons (duh)
+
 # RL Parameters
 LEARNING_RATE_ETA = 0.0001
 DISCOUNT_FACTOR_GAMMA = 0.99
@@ -266,15 +269,22 @@ flif_neuron_params = {
     "V_th": FLIF_THRESHOLD_VOLTAGE, "V_reset": FLIF_RESET_VOLTAGE,
     "bias": FLIF_NEURONS_BIAS, "memory_length": FLIF_MEMORY_LENGTH
 }
+
+
 fLIF_food = FractionalLIFNeuron("food_ctx", flif_neuron_params)
 fLIF_nofood = FractionalLIFNeuron("nofood_ctx", flif_neuron_params)
 
+''' ### OBSOLETE - Use for non-fractional order ###
 lif_leaf_params = {
     "tau_m": LIF_MEMBRANE_TIME_CONSTANT, "V_th": LIF_THRESHOLD_VOLTAGE,
     "V_reset": LIF_RESET_VOLTAGE, "bias_current": LIF_NEURONS_BIAS # Assuming bias is current
 }
-action_leaf_neurons_food_context = [FractionalLIFNeuron(f"food_leaf_{i}", flif_neuron_params) for i in range(3)]
-action_leaf_neurons_nofood_context = [FractionalLIFNeuron(f"nofood_leaf_{i}", flif_neuron_params) for i in range(3)]
+'''
+
+# Initialize output and hidden neurons
+action_leaf_neurons = [FractionalLIFNeuron(f"food_leaf_{i}", flif_neuron_params) for i in range(3)]
+
+hidden_leaf_neurons = [FractionalLIFNeuron(f"hidden_{i}", flif_neuron_params) for i in range(NUM_HIDDEN_NEURONS)]
 
 W_food_to_action = initialize_weights(3)
 W_nofood_to_action = initialize_weights(3)
@@ -296,7 +306,7 @@ for episode_i in range(NUM_EPISODES):
     
     fLIF_food.reset_state()
     fLIF_nofood.reset_state()
-    for leaf_neuron in action_leaf_neurons_food_context + action_leaf_neurons_nofood_context:
+    for leaf_neuron in action_leaf_neurons:
         leaf_neuron.reset_state()
 
     episode_trajectory = []
@@ -312,7 +322,6 @@ for episode_i in range(NUM_EPISODES):
         current_input_to_active_fLIF = I_ACTIVE_INPUT_CURRENT
         current_input_to_inactive_fLIF = 0.0
         
-        active_leaf_neurons = action_leaf_neurons_food_context if is_food_ahead else action_leaf_neurons_nofood_context
         active_weights = W_food_to_action if is_food_ahead else W_nofood_to_action
 
         fLIF_spike_trace_this_T_ant = np.zeros(NUM_NEURON_STEPS_PER_ANT_STEP, dtype=int)
@@ -326,7 +335,7 @@ for episode_i in range(NUM_EPISODES):
             inactive_fLIF.update(current_input_to_inactive_fLIF, DT_NEURON_SIM)
             
             for i_leaf in range(3):
-                leaf_neuron = active_leaf_neurons[i_leaf]
+                leaf_neuron = action_leaf_neurons[i_leaf]
                 weight = active_weights[i_leaf]
                 synaptic_current_to_leaf = fLIF_spike_trace_this_T_ant[t_neuron_idx] * weight
                 
@@ -387,7 +396,7 @@ for episode_i in range(NUM_EPISODES):
             G_t_to_use = 0  
         active_weights_grad_delta_ref = delta_W_food_to_action if transition["is_food_ahead_context"] else delta_W_nofood_to_action
         # Determine leaf params based on context (assuming they might differ, though here they are same)
-        active_leaf_neuron_params = lif_leaf_params 
+        active_leaf_neuron_params = flif_neuron_params 
 
         for k_action_idx in range(3): # For each of the 3 active weights
             # Approx dN_k / dw_k 
