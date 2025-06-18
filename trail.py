@@ -1,10 +1,6 @@
 import numpy as np
 
 def load_santa_fe_trail():
-    """
-    Returns the 32×32 Santa Fe trail map as a NumPy array.
-    1 indicates a food pellet or the start ('S'), 0 indicates empty.
-    """
     lines = [
         "S###............................",
         "...#............................",

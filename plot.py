@@ -18,11 +18,11 @@ def load_and_smooth_data(alpha, avg_window=100):
     return avg_data, max_val
 
 # Alpha values to sweep
-alpha_vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-
+#alpha_vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1.0]
+alpha_vals = [0.65]
 # Set up colormap
 norm = mcolors.Normalize(vmin=0.0, vmax=1.2)
-cmap = cm.inferno
+cmap = cm.gnuplot
 
 # Storage for histogram data
 max_vals = []
